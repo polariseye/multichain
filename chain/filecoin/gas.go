@@ -51,7 +51,7 @@ func (gasEstimator *GasEstimator) EstimateGas(ctx context.Context) (pack.U256, p
 	}
 
 	// Estimate the gas fee cap and gas premium fields for this dummy message.
-	msgOut, err := gasEstimator.client.node.GasEstimateMessageGas(ctx, &msgIn, &api.DefaultMessageSendSpec, types.EmptyTSK)
+	msgOut, err := gasEstimator.client.node.GasEstimateMessageGas(ctx, &msgIn, &api.MessageSendSpec{}, types.EmptyTSK)
 	if err != nil {
 		return pack.NewU256([32]byte{}), pack.NewU256([32]byte{}), fmt.Errorf("estimating gas price: %v", err)
 	}

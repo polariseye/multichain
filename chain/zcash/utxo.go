@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/codahale/blake2"
+	blake2 "github.com/minio/blake2b-simd"
 	"github.com/renproject/multichain/api/utxo"
 	"github.com/renproject/multichain/chain/bitcoin"
 	"github.com/renproject/pack"
@@ -483,10 +483,13 @@ func calculateSighash(
 }
 
 func blake2b(data, key []byte) (h chainhash.Hash, err error) {
-	bHash := blake2.New(&blake2.Config{
-		Size:     32,
-		Personal: key,
+	bHash, err := blake2.New(&blake2.Config{
+		Size: 32,
+		Key:  key,
 	})
+	if err != nil {
+		return h, err
+	}
 
 	if _, err = bHash.Write(data); err != nil {
 		return h, err

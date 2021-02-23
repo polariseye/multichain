@@ -19,7 +19,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
-	cosmossdk "github.com/cosmos/cosmos-sdk/types"
 	filaddress "github.com/filecoin-project/go-address"
 	filtypes "github.com/filecoin-project/lotus/chain/types"
 	"github.com/renproject/id"
@@ -30,11 +29,9 @@ import (
 	// "github.com/renproject/multichain/chain/digibyte"
 	"github.com/renproject/multichain/chain/dogecoin"
 	"github.com/renproject/multichain/chain/filecoin"
-	"github.com/renproject/multichain/chain/terra"
 	"github.com/renproject/multichain/chain/zcash"
 	"github.com/renproject/pack"
 	"github.com/renproject/surge"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -139,28 +136,6 @@ var _ = Describe("Multichain", func() {
 					r.Read(rawAddr)
 					formattedRawAddr := append([]byte{byte(filaddress.SECP256K1)}, rawAddr[:]...)
 					return multichain.RawAddress(pack.NewBytes(formattedRawAddr[:]))
-				},
-				func() multichain.Address {
-					return multichain.Address("")
-				},
-				func() multichain.RawAddress {
-					return multichain.RawAddress([]byte{})
-				},
-			},
-			{
-				multichain.Terra,
-				func() multichain.AddressEncodeDecoder {
-					return terra.NewAddressEncodeDecoder()
-				},
-				func() multichain.Address {
-					pk := secp256k1.GenPrivKey()
-					addr := cosmossdk.AccAddress(pk.PubKey().Address())
-					return multichain.Address(addr.String())
-				},
-				func() multichain.RawAddress {
-					pk := secp256k1.GenPrivKey()
-					rawAddr := pk.PubKey().Address()
-					return multichain.RawAddress(pack.Bytes(rawAddr))
 				},
 				func() multichain.Address {
 					return multichain.Address("")
@@ -358,66 +333,6 @@ var _ = Describe("Multichain", func() {
 			txParams            func(multichain.AccountClient) (pack.U256, pack.U256, pack.U256, pack.U256, pack.Bytes)
 			chain               multichain.Chain
 		}{
-			{
-				func() (id.PrivKey, *id.PubKey, multichain.Address) {
-					pkEnv := os.Getenv("TERRA_PK")
-					if pkEnv == "" {
-						panic("TERRA_PK is undefined")
-					}
-					pkBytes, err := hex.DecodeString(pkEnv)
-					Expect(err).NotTo(HaveOccurred())
-					var pk secp256k1.PrivKeySecp256k1
-					copy(pk[:], pkBytes)
-					addrEncoder := terra.NewAddressEncoder()
-					senderAddr, err := addrEncoder.EncodeAddress(multichain.RawAddress(pack.Bytes(pk.PubKey().Address())))
-					Expect(err).NotTo(HaveOccurred())
-					senderPrivKey := id.PrivKey{}
-					err = surge.FromBinary(&senderPrivKey, pkBytes)
-					Expect(err).NotTo(HaveOccurred())
-					return senderPrivKey, senderPrivKey.PubKey(), senderAddr
-				},
-				func(privKey id.PrivKey) multichain.Address {
-					pkBytes, err := surge.ToBinary(privKey)
-					Expect(err).NotTo(HaveOccurred())
-					var pk secp256k1.PrivKeySecp256k1
-					copy(pk[:], pkBytes)
-					addrEncoder := terra.NewAddressEncoder()
-					addr, err := addrEncoder.EncodeAddress(multichain.RawAddress(pack.Bytes(pk.PubKey().Address())))
-					Expect(err).NotTo(HaveOccurred())
-					return addr
-				},
-				"http://127.0.0.1:26657",
-				func() multichain.Address {
-					recipientKey := secp256k1.GenPrivKey()
-					addrEncoder := terra.NewAddressEncoder()
-					recipient, err := addrEncoder.EncodeAddress(multichain.RawAddress(pack.Bytes(recipientKey.PubKey().Address())))
-					Expect(err).NotTo(HaveOccurred())
-					return recipient
-				},
-				func(rpcURL pack.String) (multichain.AccountClient, multichain.AccountTxBuilder) {
-					client := terra.NewClient(
-						terra.DefaultClientOptions().
-							WithHost(rpcURL).
-							WithCoinDenom("uluna"),
-					)
-					txBuilder := terra.NewTxBuilder(
-						terra.DefaultTxBuilderOptions().
-							WithChainID("testnet"),
-						client,
-					)
-
-					return client, txBuilder
-				},
-				func(_ multichain.AccountClient) (pack.U256, pack.U256, pack.U256, pack.U256, pack.Bytes) {
-					amount := pack.NewU256FromU64(pack.U64(2000000))
-					gasLimit := pack.NewU256FromU64(pack.U64(100000))
-					gasPrice := pack.NewU256FromU64(pack.U64(1))
-					gasCap := pack.NewU256FromInt(gasPrice.Int())
-					payload := pack.NewBytes([]byte("multichain"))
-					return amount, gasLimit, gasPrice, gasCap, payload
-				},
-				multichain.Terra,
-			},
 			{
 				func() (id.PrivKey, *id.PubKey, multichain.Address) {
 					pkEnv := os.Getenv("FILECOIN_PK")
