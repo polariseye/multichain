@@ -1,1 +1,6 @@
+.git
+.github
+.gitignore
+.gitmodules
+.DS_Store
 **/filecoin-ffi
