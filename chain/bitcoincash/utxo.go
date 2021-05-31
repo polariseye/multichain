@@ -216,6 +216,53 @@ func (tx *Tx) Sign(signatures []pack.Bytes65, pubKey pack.Bytes) error {
 	return nil
 }
 
+// SignMult 基于多个账户的未花费输出进行签名,paramList是一个signatures,pubKey的数组
+func (tx *Tx) SignMult(paramList ...interface{}) error {
+	if tx.signed {
+		return fmt.Errorf("already signed")
+	}
+
+	signaturesNum := 0
+	for i := 0; i < len(paramList)/2; i++ {
+		signaturesItem := paramList[i*2].([]pack.Bytes65)
+		signaturesNum += len(signaturesItem)
+	}
+	if signaturesNum != len(tx.msgTx.TxIn) {
+		return fmt.Errorf("expected %v signatures, got %v signatures", len(tx.msgTx.TxIn), signaturesNum)
+	}
+
+	inputIndex := 0
+	for paramPariIndex := 0; paramPariIndex < len(paramList)/2; paramPariIndex++ {
+		signatures := paramList[paramPariIndex*2].([]pack.Bytes65)
+		pubKey := paramList[paramPariIndex*2+1].(pack.Bytes)
+
+		for _, rsv := range signatures {
+			r := new(big.Int).SetBytes(rsv[:32])
+			s := new(big.Int).SetBytes(rsv[32:64])
+			signature := btcec.Signature{
+				R: r,
+				S: s,
+			}
+
+			builder := txscript.NewScriptBuilder()
+			builder.AddData(append(signature.Serialize(), byte(txscript.SigHashAll|SighashForkID)))
+			builder.AddData(pubKey)
+			if tx.inputs[inputIndex].SigScript != nil {
+				builder.AddData(tx.inputs[inputIndex].SigScript)
+			}
+			signatureScript, err := builder.Script()
+			if err != nil {
+				return err
+			}
+			tx.msgTx.TxIn[inputIndex].SignatureScript = signatureScript
+			inputIndex++
+		}
+	}
+
+	tx.signed = true
+	return nil
+}
+
 // Serialize serializes the UTXO transaction to bytes
 func (tx *Tx) Serialize() (pack.Bytes, error) {
 	buf := new(bytes.Buffer)

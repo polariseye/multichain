@@ -63,6 +63,8 @@ type Tx interface {
 	// The serialized public key used to sign the sighashes should also be
 	// specified whenever it is available.
 	Sign([]pack.Bytes65, pack.Bytes) error
+	// SignMult 基于多个账户的未花费输出进行签名,paramList是一个signatures,pubKey的数组
+	SignMult(paramList ...interface{}) error
 
 	// Serialize the transaction into bytes. This is the format in which the
 	// transaction will be submitted by the client.
